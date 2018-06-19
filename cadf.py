@@ -3,12 +3,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import pandas as pd
-import pandas_datareader.data as web
+import pandas.io.data as web
 import pprint
 import statsmodels.tsa.stattools as ts
-import statsmodels.formula.api as sm
 
-# 画图函数
+from pandas.stats.api import ols
+
+
 def plot_price_series(df, ts1, ts2):
     months = mdates.MonthLocator()  # every month
     fig, ax = plt.subplots()
@@ -26,7 +27,6 @@ def plot_price_series(df, ts1, ts2):
     plt.legend()
     plt.show()
 
-#散点图
 def plot_scatter_series(df, ts1, ts2):
     plt.xlabel('%s Price ($)' % ts1)
     plt.ylabel('%s Price ($)' % ts2)
@@ -34,7 +34,6 @@ def plot_scatter_series(df, ts1, ts2):
     plt.scatter(df[ts1], df[ts2])
     plt.show()
 
-#残差序列图
 def plot_residuals(df):
     months = mdates.MonthLocator()  # every month
     fig, ax = plt.subplots()
@@ -64,20 +63,22 @@ if __name__ == "__main__":
     df["AREX"] = arex["Adj Close"]
     df["WLL"] = wll["Adj Close"]
 
-    # 时间序列画图
+    # Plot the two time series
     plot_price_series(df, "AREX", "WLL")
 
-    # 散点图
+    # Display a scatter plot of the two time series
     plot_scatter_series(df, "AREX", "WLL")
 
-    # 计算beta系数
-    res = sm.ols(formula=" WLL ~ AREX ", data = df).fit()
-    beta_hr = res.params['AREX'] 
+    # Calculate optimal hedge ratio "beta"
+    res = ols(y=df['WLL'], x=df["AREX"])
+    beta_hr = res.beta.x
 
-    # 残差序列图
-    df["res"] = df["WLL"] - beta_hr*df["AREX"] - res.params['Intercept']
+    # Calculate the residuals of the linear combination
+    df["res"] = df["WLL"] - beta_hr*df["AREX"]
 
+    # Plot the residuals
     plot_residuals(df)
-    
+
+    # Calculate and output the CADF test on the residuals
     cadf = ts.adfuller(df["res"])
     pprint.pprint(cadf)
